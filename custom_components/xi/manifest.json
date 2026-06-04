@@ -1,9 +1,10 @@
 {
   "domain": "xi",
   "name": "자이",
-  "codeowners": [],
+  "codeowners": ["sungsoos"],
   "config_flow": true,
-  "documentation": "https://www.home-assistant.io/integrations/xi",
+  "documentation": "https://github.com/sungsoos/HomeAssistant-XiHome/wiki",
+  "issue_tracker": "https://github.com/sungsoos/HomeAssistant-XiHome/issues",
   "iot_class": "cloud_polling",
   "version": "1.0.0"
 }
