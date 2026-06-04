@@ -48,14 +48,6 @@ async def async_setup_entry(
                     )
                 )
 
-        # Add parking location sensors
-        parking_list = coordinator.parking_data.get("list") or []
-        if parking_list:
-            sensors.extend(
-                XiParkingLocationSensor(coordinator, car)
-                for car in parking_list
-                if "carno" in car
-            )
     except Exception as err:  # noqa: BLE001
         _LOGGER.error("Error setting up sensors: %s", err)
 
@@ -107,61 +99,5 @@ class XiAirPurifierMeasurementSensor(CoordinatorEntity[XiDataUpdateCoordinator],
                     pass
         return None
 
-
-class XiParkingLocationSensor(CoordinatorEntity[XiDataUpdateCoordinator], SensorEntity):
-    """Representation of a 자이 Parking Location Sensor."""
-
-    _attr_icon = "mdi:car"
-
-    def __init__(
-        self,
-        coordinator: XiDataUpdateCoordinator,
-        car_data: dict[str, Any],
-    ) -> None:
-        """Initialize."""
-        super().__init__(coordinator)
-        self._carno = car_data["carno"]
-        self._attr_name = f"주차 위치 {self._carno}"
-
-        # Unique ID based on household and car number
-        apt_code = coordinator.client.apt_code or "unknown"
-        dong = coordinator.client.dong_no or "unknown"
-        ho = coordinator.client.ho_no or "unknown"
-        self._attr_unique_id = f"xi_parking_{apt_code}_{dong}_{ho}_{self._carno}"
-
-    @property
-    def native_value(self) -> str | None:
-        """Return the state of the sensor."""
-        parking_list = self.coordinator.parking_data.get("list") or []
-        for car in parking_list:
-            if car.get("carno") == self._carno:
-                label = car.get("label")
-                if label and label.strip():
-                    return label
-                floor = car.get("floor")
-                block = car.get("block")
-                if floor or block:
-                    return f"{floor} {block}".strip()
-                return "미주차"
-        return "미주차"
-
-    @property
-    def extra_state_attributes(self) -> dict[str, Any]:
-        """Return device state attributes."""
-        parking_list = self.coordinator.parking_data.get("list") or []
-        status = self.coordinator.parking_data.get("status") or {}
-        for car in parking_list:
-            if car.get("carno") == self._carno:
-                return {
-                    "carno": car.get("carno"),
-                    "floor": car.get("floor"),
-                    "block": car.get("block"),
-                    "in_parking_datetime_label": car.get("in_parking_datetime_label"),
-                    "image_filename": car.get("image_filename"),
-                    "tagid": car.get("tagid"),
-                    "parking_register_method": status.get("parking_register_method"),
-                    "favorite_parking": status.get("FAVORITE_PARKING_yn") == "Y",
-                }
-        return {}
 
 

@@ -2,7 +2,6 @@
 import asyncio
 from datetime import timedelta
 import logging
-import time
 from typing import Any
 
 from homeassistant.config_entries import ConfigEntry
@@ -29,20 +28,9 @@ class XiDataUpdateCoordinator(DataUpdateCoordinator[dict[str, dict[str, Any]]]):
         )
         self.client = client
         self.room_names: dict[str, str] = {}
-        self.parking_data: dict[str, Any] = {}
-        self._last_parking_update = 0.0
 
     async def _async_update_data(self) -> dict[str, dict[str, Any]]:
         """Fetch data from API."""
-        now = time.time()
-        if now - self._last_parking_update >= 60.0:
-            try:
-                self.parking_data = await self.client.get_parking_location()
-                self._last_parking_update = now
-            except Exception as err:  # noqa: BLE001
-                _LOGGER.error("Failed to fetch parking location: %s", err)
-
-
         try:
             # Fetch room IDs and names once if not already cached
             if not self.room_names:

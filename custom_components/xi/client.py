@@ -272,28 +272,3 @@ class XiHomeClient:
         finally:
             if not self.session:
                 await session.close()
-
-    async def get_parking_location(self) -> dict[str, Any]:
-        """Retrieve parking location of household registered cars."""
-        url = f"{self.DEVICE_URL}/public/parking_location"
-        session = self.session or aiohttp.ClientSession()
-        try:
-            token_used = self.access_token
-            async with session.get(
-                url, params=self._get_base_params(), headers=self._get_headers(), ssl=False
-            ) as response:
-                if response.status == 401:
-                    _LOGGER.info("Access token expired (401), attempting token refresh")
-                    await self.async_refresh_tokens(token_used)
-                    async with session.get(
-                        url, params=self._get_base_params(), headers=self._get_headers(), ssl=False
-                    ) as retry_response:
-                        retry_response.raise_for_status()
-                        data = await retry_response.json()
-                        return data.get("result", {})
-                response.raise_for_status()
-                data = await response.json()
-                return data.get("result", {})
-        finally:
-            if not self.session:
-                await session.close()

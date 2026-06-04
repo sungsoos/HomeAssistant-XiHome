@@ -18,8 +18,6 @@ PLATFORMS: list[Platform] = [
     Platform.LIGHT,
     Platform.CLIMATE,
     Platform.SENSOR,
-    Platform.BINARY_SENSOR,
-    Platform.DEVICE_TRACKER,
 ]
 
 async def async_setup_entry(hass: HomeAssistant, entry: ConfigEntry) -> bool:
