@@ -1,12 +1,15 @@
 """API client for XiHome integration."""
+
 from __future__ import annotations
 
 import logging
+from collections.abc import Callable
 from typing import Any
 
 import aiohttp
 
 _LOGGER = logging.getLogger(__name__)
+
 
 class XiHomeClient:
     """Client for interacting with the camellia-back.xihome.kr API."""
@@ -26,19 +29,36 @@ class XiHomeClient:
         dong_no: str | None = None,
         ho_no: str | None = None,
         session: aiohttp.ClientSession | None = None,
+        on_tokens_updated: Callable[[dict[str, Any]], None] | None = None,
     ) -> None:
         """Initialize."""
         import uuid
+
         self.username = username
         self.password = password
         self.device_token = device_token or str(uuid.uuid4())
-        self.device_model = device_model or "Home Assistant"
+        self.device_model = "Home Assistant"
         self.access_token = access_token
         self.refresh_token = refresh_token
         self.apt_code = apt_code
         self.dong_no = dong_no
         self.ho_no = ho_no
         self.session = session
+        self.on_tokens_updated = on_tokens_updated
+
+    def _notify_tokens_updated(self) -> None:
+        """Notify that tokens or connection details have been updated."""
+        if self.on_tokens_updated:
+            self.on_tokens_updated(
+                {
+                    "device_token": self.device_token,
+                    "access_token": self.access_token,
+                    "refresh_token": self.refresh_token,
+                    "apt_code": self.apt_code,
+                    "dong_no": self.dong_no,
+                    "ho_no": self.ho_no,
+                }
+            )
 
     async def authenticate(self) -> dict[str, Any]:
         """Log in to get access token and household details."""
@@ -63,6 +83,7 @@ class XiHomeClient:
                 self.apt_code = last_house.get("last_selected_apt_code")
                 self.dong_no = last_house.get("last_selected_dong_no")
                 self.ho_no = last_house.get("last_selected_ho_no")
+                self._notify_tokens_updated()
                 return data
         finally:
             if not self.session:
@@ -111,6 +132,7 @@ class XiHomeClient:
                 self.access_token = result.get("access_token")
                 if result.get("refresh_token"):
                     self.refresh_token = result.get("refresh_token")
+                self._notify_tokens_updated()
                 return result
         finally:
             if not self.session:
@@ -122,13 +144,19 @@ class XiHomeClient:
         session = self.session or aiohttp.ClientSession()
         try:
             async with session.get(
-                url, params=self._get_base_params(), headers=self._get_headers(), ssl=False
+                url,
+                params=self._get_base_params(),
+                headers=self._get_headers(),
+                ssl=False,
             ) as response:
                 if response.status == 401:
                     _LOGGER.info("Access token expired (401), attempting token refresh")
                     await self.refresh_tokens()
                     async with session.get(
-                        url, params=self._get_base_params(), headers=self._get_headers(), ssl=False
+                        url,
+                        params=self._get_base_params(),
+                        headers=self._get_headers(),
+                        ssl=False,
                     ) as retry_response:
                         retry_response.raise_for_status()
                         data = await retry_response.json()
@@ -166,7 +194,9 @@ class XiHomeClient:
             if not self.session:
                 await session.close()
 
-    async def send_command(self, endpoint: str, device_id: str, status: dict[str, Any]) -> bool:
+    async def send_command(
+        self, endpoint: str, device_id: str, status: dict[str, Any]
+    ) -> bool:
         """Send device command."""
         url = f"{self.DEVICE_URL}/device/{endpoint}/command"
         payload = {
@@ -184,7 +214,9 @@ class XiHomeClient:
                     try:
                         await self.refresh_tokens()
                     except Exception as err:
-                        _LOGGER.error("Failed to refresh tokens during command: %s", err)
+                        _LOGGER.error(
+                            "Failed to refresh tokens during command: %s", err
+                        )
                         return False
                     async with session.post(
                         url, json=payload, headers=self._get_headers(), ssl=False
@@ -193,14 +225,20 @@ class XiHomeClient:
                             text = await retry_response.text()
                             _LOGGER.error(
                                 "Failed to send command to %s (retry): %s - %s - Payload: %s",
-                                url, retry_response.status, text, payload
+                                url,
+                                retry_response.status,
+                                text,
+                                payload,
                             )
                         return retry_response.status in (200, 204)
                 if response.status not in (200, 204):
                     text = await response.text()
                     _LOGGER.error(
                         "Failed to send command to %s: %s - %s - Payload: %s",
-                        url, response.status, text, payload
+                        url,
+                        response.status,
+                        text,
+                        payload,
                     )
                 return response.status in (200, 204)
         finally:
@@ -215,14 +253,40 @@ class XiHomeClient:
         params["dust_unit"] = dust_unit
         session = self.session or aiohttp.ClientSession()
         try:
+            token_used = self.access_token
             async with session.get(
                 url, params=params, headers=self._get_headers(), ssl=False
             ) as response:
                 if response.status == 401:
                     _LOGGER.info("Access token expired (401), attempting token refresh")
-                    await self.refresh_tokens()
+                    await self.async_refresh_tokens(token_used)
                     async with session.get(
                         url, params=params, headers=self._get_headers(), ssl=False
+                    ) as retry_response:
+                        retry_response.raise_for_status()
+                        data = await retry_response.json()
+                        return data.get("result", {})
+                response.raise_for_status()
+                data = await response.json()
+                return data.get("result", {})
+        finally:
+            if not self.session:
+                await session.close()
+
+    async def get_parking_location(self) -> dict[str, Any]:
+        """Retrieve parking location of household registered cars."""
+        url = f"{self.DEVICE_URL}/public/parking_location"
+        session = self.session or aiohttp.ClientSession()
+        try:
+            token_used = self.access_token
+            async with session.get(
+                url, params=self._get_base_params(), headers=self._get_headers(), ssl=False
+            ) as response:
+                if response.status == 401:
+                    _LOGGER.info("Access token expired (401), attempting token refresh")
+                    await self.async_refresh_tokens(token_used)
+                    async with session.get(
+                        url, params=self._get_base_params(), headers=self._get_headers(), ssl=False
                     ) as retry_response:
                         retry_response.raise_for_status()
                         data = await retry_response.json()

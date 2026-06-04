@@ -23,8 +23,17 @@ async def async_setup_entry(hass: HomeAssistant, entry: ConfigEntry) -> bool:
     client = XiHomeClient(
         username=entry.data[CONF_USERNAME],
         password=entry.data[CONF_PASSWORD],
+        device_token=entry.data.get("device_token"),
+        access_token=entry.data.get("access_token"),
+        refresh_token=entry.data.get("refresh_token"),
+        apt_code=entry.data.get("apt_code"),
+        dong_no=entry.data.get("dong_no"),
+        ho_no=entry.data.get("ho_no"),
         device_model="Home Assistant",
         session=async_get_clientsession(hass),
+        on_tokens_updated=lambda tokens: hass.config_entries.async_update_entry(
+            entry, data={**entry.data, **tokens}
+        ),
     )
 
     # Use entry.data[CONF_HOST] to configure AUTH_URL and DEVICE_URL if needed
@@ -37,10 +46,22 @@ async def async_setup_entry(hass: HomeAssistant, entry: ConfigEntry) -> bool:
             client.AUTH_URL = f"{host}:5451/api"
             client.DEVICE_URL = f"{host}:5452/api"
 
-    try:
-        await client.authenticate()
-    except Exception as err:
-        raise ConfigEntryNotReady(f"Failed to authenticate with 자이: {err}") from err
+    # Try to verify the existing session/tokens, otherwise authenticate
+    authenticated = False
+    if client.access_token and client.refresh_token:
+        try:
+            # Try to get rooms to verify if the current token works or can be refreshed
+            await client.get_rooms()
+            authenticated = True
+            _LOGGER.debug("Successfully authenticated using existing tokens")
+        except Exception as err:
+            _LOGGER.debug("Failed to use existing tokens, will try to re-authenticate: %s", err)
+
+    if not authenticated:
+        try:
+            await client.authenticate()
+        except Exception as err:
+            raise ConfigEntryNotReady(f"Failed to authenticate with 자이: {err}") from err
 
     coordinator = XiDataUpdateCoordinator(hass, client)
     await coordinator.async_config_entry_first_refresh()
