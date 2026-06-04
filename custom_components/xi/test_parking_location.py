@@ -80,6 +80,30 @@ async def test_parking_location_entities(hass: HomeAssistant) -> None:
         assert state_1.attributes["parking_register_method"] == "camera"
         assert state_1.attributes["favorite_parking"] is True
 
+        # Check binary sensor for car 1 (parked)
+        bin_entity_id_1 = None
+        for state in hass.states.async_all():
+            if state.entity_id.startswith("binary_sensor.") and "12ga3456" in state.entity_id:
+                bin_entity_id_1 = state.entity_id
+                break
+        assert bin_entity_id_1 is not None
+        bin_state_1 = hass.states.get(bin_entity_id_1)
+        assert bin_state_1 is not None
+        assert bin_state_1.state == "on"
+        assert bin_state_1.attributes["carno"] == "12가3456"
+
+        # Check device tracker for car 1 (parked)
+        tracker_entity_id_1 = None
+        for state in hass.states.async_all():
+            if state.entity_id.startswith("device_tracker.") and "12ga3456" in state.entity_id:
+                tracker_entity_id_1 = state.entity_id
+                break
+        assert tracker_entity_id_1 is not None
+        tracker_state_1 = hass.states.get(tracker_entity_id_1)
+        assert tracker_state_1 is not None
+        assert tracker_state_1.state == "지하 1_2층 102-B"
+        assert tracker_state_1.attributes["carno"] == "12가3456"
+
         # Check entity for car 2 (not parked)
         entity_id_2 = "sensor.ju_ca_wi_ci_78na9012"
         state_2 = hass.states.get(entity_id_2)
@@ -100,4 +124,28 @@ async def test_parking_location_entities(hass: HomeAssistant) -> None:
         assert state_2.attributes["tagid"] == "1"
         assert state_2.attributes["parking_register_method"] == "camera"
         assert state_2.attributes["favorite_parking"] is True
+
+        # Check binary sensor for car 2 (not parked)
+        bin_entity_id_2 = None
+        for state in hass.states.async_all():
+            if state.entity_id.startswith("binary_sensor.") and "78na9012" in state.entity_id:
+                bin_entity_id_2 = state.entity_id
+                break
+        assert bin_entity_id_2 is not None
+        bin_state_2 = hass.states.get(bin_entity_id_2)
+        assert bin_state_2 is not None
+        assert bin_state_2.state == "off"
+        assert bin_state_2.attributes["carno"] == "78나9012"
+
+        # Check device tracker for car 2 (not parked)
+        tracker_entity_id_2 = None
+        for state in hass.states.async_all():
+            if state.entity_id.startswith("device_tracker.") and "78na9012" in state.entity_id:
+                tracker_entity_id_2 = state.entity_id
+                break
+        assert tracker_entity_id_2 is not None
+        tracker_state_2 = hass.states.get(tracker_entity_id_2)
+        assert tracker_state_2 is not None
+        assert tracker_state_2.state == "not_home"
+        assert tracker_state_2.attributes["carno"] == "78나9012"
 
