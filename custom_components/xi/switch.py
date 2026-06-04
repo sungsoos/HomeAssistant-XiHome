@@ -1,4 +1,5 @@
 """Switch platform for 자이 integration."""
+
 from __future__ import annotations
 
 import logging
@@ -15,6 +16,7 @@ from .const import DOMAIN, get_device_friendly_name
 from .coordinator import XiDataUpdateCoordinator
 
 _LOGGER = logging.getLogger(__name__)
+
 
 async def async_setup_entry(
     hass: HomeAssistant,
@@ -41,7 +43,12 @@ async def async_setup_entry(
 class XiStandbySwitch(CoordinatorEntity[XiDataUpdateCoordinator], SwitchEntity):
     """Representation of a 자이 Standby Power Switch."""
 
-    def __init__(self, coordinator: XiDataUpdateCoordinator, device_data: dict[str, Any], room_name: str) -> None:
+    def __init__(
+        self,
+        coordinator: XiDataUpdateCoordinator,
+        device_data: dict[str, Any],
+        room_name: str,
+    ) -> None:
         """Initialize."""
         super().__init__(coordinator)
         self._client = coordinator.client
@@ -88,7 +95,9 @@ class XiStandbySwitch(CoordinatorEntity[XiDataUpdateCoordinator], SwitchEntity):
         self._attr_is_on = True
         self.async_write_ha_state()
 
-        success = await self._client.send_command("standby", self._device_id, {"power": True})
+        success = await self._client.send_command(
+            "standby", self._device_id, {"power": True}
+        )
         if success:
             await self.coordinator.async_request_refresh()
         else:
@@ -101,7 +110,9 @@ class XiStandbySwitch(CoordinatorEntity[XiDataUpdateCoordinator], SwitchEntity):
         self._attr_is_on = False
         self.async_write_ha_state()
 
-        success = await self._client.send_command("standby", self._device_id, {"power": False})
+        success = await self._client.send_command(
+            "standby", self._device_id, {"power": False}
+        )
         if success:
             await self.coordinator.async_request_refresh()
         else:

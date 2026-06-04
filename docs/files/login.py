@@ -81,8 +81,8 @@ def get_user_household_info(access_token):
 # --- Example Execution Flow ---
 if __name__ == "__main__":
     # Input credentials
-    USER_ID = "sungsoos"
-    USER_PW = "054so00soXI"
+    USER_ID = "YOUR_USER_ID"
+    USER_PW = "YOUR_PASSWORD"
 
     try:
         # Step 1: Log in to get tokens

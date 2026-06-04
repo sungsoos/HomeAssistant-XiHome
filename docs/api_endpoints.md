@@ -266,3 +266,167 @@ Host: camellia-back.xihome.kr:5452
     }
   }
   ```
+
+---
+
+### 🚪 J. 공동현관 로비폰/도어락 목록 조회 (Get Lobby/Doorlocks)
+* **메소드 및 URL**: `GET https://camellia-back.xihome.kr:5452/api/public/doorlock`
+* **설명**: 세대와 연동된 공동현관(1층 입구, 지하 주차장 입구 등) 로비폰 및 도어락 목록을 조회합니다.
+* **요청 헤더**: 공통 헤더 규격 적용
+* **쿼리 매개변수**: `dong_no`, `ho_no`, `apt_code`
+* **응답 바디 (성공 - 200 OK)**:
+  ```json
+  {
+    "result": {
+      "list": [
+        {
+          "lobbydong": "DONG_NO",
+          "lobbyho": "9001",
+          "comment": "1_2라인1F",
+          "label": "DONG_NO동 1_2라인1F"
+        },
+        {
+          "lobbydong": "DONG_NO",
+          "lobbyho": "9011",
+          "comment": "1_2라인B1",
+          "label": "DONG_NO동 1_2라인B1"
+        },
+        {
+          "lobbydong": "DONG_NO",
+          "lobbyho": "9021",
+          "comment": "1_2라인B2",
+          "label": "DONG_NO동 1_2라인B2"
+        }
+      ]
+    },
+    "resultCode": "success",
+    "messageCode": "success",
+    "resultMessage": "정상적으로 처리되었습니다.",
+    "resultTitle": "성공"
+  }
+  ```
+
+---
+
+### 🚗 K. 세대 차량 주차 위치 조회 (Get Parking Location)
+* **메소드 및 URL**: `GET https://camellia-back.xihome.kr:5452/api/public/parking_location`
+* **설명**: 아파트 지하 주차장의 주차인식 카메라 등을 통해 식별된 세대 등록 차량의 주차 위치 정보를 조회합니다.
+* **요청 헤더**: 공통 헤더 규격 적용
+* **쿼리 매개변수**: `dong_no`, `ho_no`, `apt_code`
+* **응답 바디 (성공 - 200 OK)**:
+  ```json
+  {
+    "result": {
+      "result": "0",
+      "list": [
+        {
+          "tagid": "0",
+          "carno": "****CAR_NUMBER_LAST_4_DIGITS",
+          "floor": "B1_2",
+          "block": "DONG_NO-B_PARKING_BLOCK",
+          "label": "지하 1_2층 DONG_NO-B_PARKING_BLOCK",
+          "in_parking_datetime_label": "",
+          "image_filename": ""
+        }
+      ],
+      "errmsg": "",
+      "status": {
+        "parking_register_method": "camera",
+        "FAVORITE_PARKING_yn": "Y"
+      }
+    },
+    "resultCode": "success",
+    "messageCode": "success",
+    "resultMessage": "정상적으로 처리되었습니다.",
+    "resultTitle": "성공"
+  }
+  ```
+
+---
+
+### 📅 L. 방문 차량 예약 목록 조회 (Get Parking Reservations)
+* **메소드 및 URL**: `GET https://camellia-back.xihome.kr:5452/api/public/parking_reservation`
+* **설명**: 세대에 등록된 방문 차량 예약 목록을 조회합니다.
+* **요청 헤더**: 공통 헤더 규격 적용
+* **쿼리 매개변수**: `dong_no`, `ho_no`, `apt_code`
+* **응답 바디 (성공 - 200 OK - 예약 데이터 없음 예시)**:
+  ```json
+  {
+    "resultCode": "success",
+    "resultMessage": "정상적으로 처리되었습니다.",
+    "result": {
+      "list": [],
+      "result": "3206",
+      "errmsg": "데이터를 찾을 수 없습니다."
+    },
+    "messageCode": "success",
+    "resultTitle": "성공"
+  }
+  ```
+
+---
+
+### ⏰ M. 방문 차량 예약 가능 시간 조회 (Get Parking Reservation Available Times)
+* **메소드 및 URL**: `GET https://camellia-back.xihome.kr:5452/api/public/parking_reservation/available_time`
+* **설명**: 방문 차량 예약을 신청할 때 허용되는 예약 시간대 정책 및 활성화 여부를 조회합니다.
+* **요청 헤더**: 공통 헤더 규격 적용
+* **쿼리 매개변수**: `dong_no`, `ho_no`, `apt_code`, `year` (예: `2026`), `month` (예: `6`)
+* **응답 바디 (성공 - 200 OK)**:
+  ```json
+  {
+    "result": {
+      "status": {
+        "VISIT_PARKING_TIME_yn": "N",
+        "VISIT_WELCOME_yn": "N"
+      }
+    },
+    "resultCode": "success",
+    "messageCode": "success",
+    "resultMessage": "정상적으로 처리되었습니다.",
+    "resultTitle": "성공"
+  }
+  ```
+
+---
+
+### 🛡️ N. 공동현관 방문자 사진/동영상 및 출입 로그 조회 (Get Security/Visitor Logs)
+* **메소드 및 URL**: `GET https://camellia-back.xihome.kr:5452/api/public/security`
+* **설명**: 공동현관 로비폰에서 세대 호출 시 촬영된 방문자 사진(Base64 이미지 데이터) 및 호출 당시 녹화된 비디오(murl 동영상 스트림 경로) 목록을 조회합니다.
+* **요청 헤더**: 공통 헤더 규격 적용
+* **쿼리 매개변수**: `dong_no`, `ho_no`, `apt_code`, `page` (예: `1`), `list_count` (예: `5`)
+* **응답 바디 (성공 - 200 OK)**:
+  ```json
+  {
+    "resultCode": "success",
+    "resultMessage": "정상적으로 처리되었습니다.",
+    "result": {
+      "list": [
+        {
+          "seq": 1,
+          "date": "**************",
+          "filename": "outdoor_**************_0.jpg",
+          "mfilename": "outdoor_**************_0.mp4",
+          "murl": "aHR0cHM6Ly9bSVBf****************************************Tk9dL1tIT19OT10vb3V0ZG9vci9vdXRkb29yXzIwMjYwNjA0MDg0MDA2XzAubXA0",
+          "data": "<BASE64_IMAGE_DATA>",
+          "link": "base64",
+          "location": "mv_outdoor"
+        }
+      ],
+      "result": "0",
+      "comment": "방문자 이력은 최근 6개월까지만 조회됩니다.",
+      "total": 32
+    },
+    "messageCode": "success",
+    "resultTitle": "성공"
+  }
+  ```
+
+---
+
+### ⚙️ O. 사용자 지정 스마트 모드 조회 (Get Custom Smart Modes)
+* **메소드 및 URL**: `GET https://camellia-back.xihome.kr:5452/api/smartmode/by_me`
+* **설명**: 사용자가 모바일 앱 또는 월패드에서 사전에 설정해 둔 스마트 홈 모드(예: 전체 소등, 외출 모드, 귀가 모드 등)의 목록과 적용 상태를 조회합니다.
+* **요청 헤더**: 공통 헤더 규격 적용
+* **쿼리 매개변수**: `dong_no`, `ho_no`, `apt_code`, `mode` (예: `all`)
+* **응답 상태**: 캐시 데이터가 일치할 시 `304 Not Modified`를 반환하며, 데이터 변경 시 신규 설정 목록(`200 OK`)을 반환합니다.
+

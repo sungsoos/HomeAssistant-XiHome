@@ -1,4 +1,5 @@
 """Climate platform for 자이 integration."""
+
 from __future__ import annotations
 
 import logging
@@ -21,6 +22,7 @@ from .coordinator import XiDataUpdateCoordinator
 
 _LOGGER = logging.getLogger(__name__)
 
+
 async def async_setup_entry(
     hass: HomeAssistant,
     config_entry: ConfigEntry,
@@ -34,7 +36,11 @@ async def async_setup_entry(
         for device_id, device in coordinator.data.items():
             device_type = device.get("type") or device.get("device_type") or ""
             # Detect heating devices
-            if "heating" in device_type.lower() or "heating" in device_id.lower() or "thermostat" in device_type.lower():
+            if (
+                "heating" in device_type.lower()
+                or "heating" in device_id.lower()
+                or "thermostat" in device_type.lower()
+            ):
                 room_name = device.get("room_name", "Room")
                 heaters.append(XiHeatingThermostat(coordinator, device, room_name))
     except Exception as err:
@@ -54,7 +60,12 @@ class XiHeatingThermostat(CoordinatorEntity[XiDataUpdateCoordinator], ClimateEnt
         | ClimateEntityFeature.TURN_OFF
     )
 
-    def __init__(self, coordinator: XiDataUpdateCoordinator, device_data: dict[str, Any], room_name: str) -> None:
+    def __init__(
+        self,
+        coordinator: XiDataUpdateCoordinator,
+        device_data: dict[str, Any],
+        room_name: str,
+    ) -> None:
         """Initialize."""
         super().__init__(coordinator)
         self._client = coordinator.client
@@ -88,9 +99,16 @@ class XiHeatingThermostat(CoordinatorEntity[XiDataUpdateCoordinator], ClimateEnt
                 or status.get("userChange")
                 or status.get("userLoad")
             )
-            db_target_temp = float(target_temp) if target_temp is not None else self._attr_target_temperature
+            db_target_temp = (
+                float(target_temp)
+                if target_temp is not None
+                else self._attr_target_temperature
+            )
 
-            if db_hvac_mode == self._attr_hvac_mode and db_target_temp == self._attr_target_temperature:
+            if (
+                db_hvac_mode == self._attr_hvac_mode
+                and db_target_temp == self._attr_target_temperature
+            ):
                 self._last_command_time = 0.0
             return self._attr_hvac_mode
         return db_hvac_mode
@@ -123,12 +141,19 @@ class XiHeatingThermostat(CoordinatorEntity[XiDataUpdateCoordinator], ClimateEnt
             or status.get("userChange")
             or status.get("userLoad")
         )
-        db_target_temp = float(target_temp) if target_temp is not None else self._attr_target_temperature
+        db_target_temp = (
+            float(target_temp)
+            if target_temp is not None
+            else self._attr_target_temperature
+        )
 
         if time.time() - self._last_command_time < 5.0:
             power_on = status.get("power") is True or status.get("power") == "on"
             db_hvac_mode = HVACMode.HEAT if power_on else HVACMode.OFF
-            if db_hvac_mode == self._attr_hvac_mode and db_target_temp == self._attr_target_temperature:
+            if (
+                db_hvac_mode == self._attr_hvac_mode
+                and db_target_temp == self._attr_target_temperature
+            ):
                 self._last_command_time = 0.0
             return self._attr_target_temperature
         return db_target_temp
@@ -150,17 +175,26 @@ class XiHeatingThermostat(CoordinatorEntity[XiDataUpdateCoordinator], ClimateEnt
                 or status.get("userChange")
                 or status.get("userLoad")
             )
-            db_target_temp = float(target_temp) if target_temp is not None else self._attr_target_temperature
+            db_target_temp = (
+                float(target_temp)
+                if target_temp is not None
+                else self._attr_target_temperature
+            )
 
             if time.time() - self._last_command_time < 5.0:
-                if db_hvac_mode == self._attr_hvac_mode and db_target_temp == self._attr_target_temperature:
+                if (
+                    db_hvac_mode == self._attr_hvac_mode
+                    and db_target_temp == self._attr_target_temperature
+                ):
                     self._last_command_time = 0.0
             else:
                 self._attr_hvac_mode = db_hvac_mode
                 self._attr_target_temperature = db_target_temp
 
             # Always update current temperature
-            current_temp = status.get("current_temperature") or status.get("current_temp")
+            current_temp = status.get("current_temperature") or status.get(
+                "current_temp"
+            )
             if current_temp is not None:
                 self._attr_current_temperature = float(current_temp)
 
@@ -174,7 +208,9 @@ class XiHeatingThermostat(CoordinatorEntity[XiDataUpdateCoordinator], ClimateEnt
         self.async_write_ha_state()
 
         power_on = hvac_mode == HVACMode.HEAT
-        success = await self._client.send_command("heating", self._device_id, {"power": power_on})
+        success = await self._client.send_command(
+            "heating", self._device_id, {"power": power_on}
+        )
         if success:
             await self.coordinator.async_request_refresh()
         else:

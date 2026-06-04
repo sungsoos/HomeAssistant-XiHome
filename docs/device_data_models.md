@@ -261,3 +261,29 @@
   }
 }
 ```
+
+---
+
+### 🔒 F. 가스 밸브 제어기 (Gas Valve Switch)
+* **식별 기준**: `device_type` 또는 `type`에 `"gas"`가 포함된 기기.
+* **조회 상태 (`status`)**:
+  ```json
+  {
+    "power": false // 열림: true, 닫힘: false
+  }
+  ```
+  *(참고: `status_custom.status_txt` 필드를 통해 현재 가스 밸브의 한글 개폐 상태("닫힘" 또는 "열림")가 함께 표시됩니다.)*
+* **제어 가능 여부**: 아파트 연동 가스 제어기 장치의 안전 규격 정책에 따라, 백엔드 API를 통한 원격 밸브 **열기(Open) 제어는 불가능하며 닫기(Close) 제어만 가능**하거나 상태만 조회할 수 있습니다. 
+
+---
+
+### 💡 G. 일괄 소등 스위치 (Master/Global Light Switch)
+* **식별 기준**: `device_type` 또는 `type`에 `"alllight"`가 포함된 기기.
+* **조회 상태 (`status`)**:
+  ```json
+  {
+    "power": true // 일괄 소등 켜짐(소등 상태 활성화): true, 꺼짐(일반): false
+  }
+  ```
+  *(참고: `status_custom.status_txt` 필드를 통해 한글 상태("켜짐" 또는 "꺼짐")가 함께 표시됩니다.)*
+
