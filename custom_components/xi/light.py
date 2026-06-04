@@ -63,21 +63,30 @@ class XiLight(CoordinatorEntity[XiDataUpdateCoordinator], LightEntity):
     @property
     def is_on(self) -> bool:
         """Return true if light is on."""
-        if time.time() - self._last_command_time < 1.0:
-            return self._attr_is_on
         device = self.coordinator.data.get(self._device_id)
         if not device:
             return self._attr_is_on
         status = device.get("status") or {}
-        return status.get("power") is True or status.get("power") == "on"
+        db_is_on = status.get("power") is True or status.get("power") == "on"
+
+        if time.time() - self._last_command_time < 5.0:
+            if db_is_on == self._attr_is_on:
+                self._last_command_time = 0.0
+            return self._attr_is_on
+        return db_is_on
 
     def _handle_coordinator_update(self) -> None:
         """Handle updated data from the coordinator."""
-        if time.time() - self._last_command_time >= 1.0:
-            device = self.coordinator.data.get(self._device_id)
-            if device:
-                status = device.get("status") or {}
-                self._attr_is_on = status.get("power") is True or status.get("power") == "on"
+        device = self.coordinator.data.get(self._device_id)
+        if device:
+            status = device.get("status") or {}
+            db_is_on = status.get("power") is True or status.get("power") == "on"
+
+            if time.time() - self._last_command_time < 5.0:
+                if db_is_on == self._attr_is_on:
+                    self._last_command_time = 0.0
+            else:
+                self._attr_is_on = db_is_on
         self.async_write_ha_state()
 
     async def async_turn_on(self, **kwargs: Any) -> None:
@@ -137,48 +146,70 @@ class XiDimmingLight(CoordinatorEntity[XiDataUpdateCoordinator], LightEntity):
     @property
     def is_on(self) -> bool:
         """Return true if light is on."""
-        if time.time() - self._last_command_time < 1.0:
-            return self._attr_is_on
         device = self.coordinator.data.get(self._device_id)
         if not device:
             return self._attr_is_on
         status = device.get("status") or {}
-        return status.get("power") is True or status.get("power") == "on"
+        db_is_on = status.get("power") is True or status.get("power") == "on"
+
+        if time.time() - self._last_command_time < 5.0:
+            db_dimming = status.get("dimming")
+            try:
+                db_brightness = int((int(db_dimming) / 4.0) * 255.0) if db_dimming is not None else self._attr_brightness
+            except ValueError:
+                db_brightness = self._attr_brightness
+            
+            if db_is_on == self._attr_is_on and db_brightness == self._attr_brightness:
+                self._last_command_time = 0.0
+            return self._attr_is_on
+        return db_is_on
 
     @property
     def brightness(self) -> int:
         """Return the brightness of this light."""
-        if time.time() - self._last_command_time < 1.0:
-            return self._attr_brightness
         device = self.coordinator.data.get(self._device_id)
         if not device:
             return self._attr_brightness
         status = device.get("status") or {}
         dimming = status.get("dimming")
+        db_brightness = self._attr_brightness
         if dimming is not None:
             try:
                 d_val = int(dimming)
                 if 1 <= d_val <= 4:
-                    return int((d_val / 4.0) * 255.0)
+                    db_brightness = int((d_val / 4.0) * 255.0)
             except ValueError:
                 pass
-        return self._attr_brightness
+
+        if time.time() - self._last_command_time < 5.0:
+            db_is_on = status.get("power") is True or status.get("power") == "on"
+            if db_is_on == self._attr_is_on and db_brightness == self._attr_brightness:
+                self._last_command_time = 0.0
+            return self._attr_brightness
+        return db_brightness
 
     def _handle_coordinator_update(self) -> None:
         """Handle updated data from the coordinator."""
-        if time.time() - self._last_command_time >= 1.0:
-            device = self.coordinator.data.get(self._device_id)
-            if device:
-                status = device.get("status") or {}
-                self._attr_is_on = status.get("power") is True or status.get("power") == "on"
-                dimming = status.get("dimming")
-                if dimming is not None:
-                    try:
-                        d_val = int(dimming)
-                        if 1 <= d_val <= 4:
-                            self._attr_brightness = int((d_val / 4.0) * 255.0)
-                    except ValueError:
-                        pass
+        device = self.coordinator.data.get(self._device_id)
+        if device:
+            status = device.get("status") or {}
+            db_is_on = status.get("power") is True or status.get("power") == "on"
+            db_dimming = status.get("dimming")
+            db_brightness = self._attr_brightness
+            if db_dimming is not None:
+                try:
+                    d_val = int(db_dimming)
+                    if 1 <= d_val <= 4:
+                        db_brightness = int((d_val / 4.0) * 255.0)
+                except ValueError:
+                    pass
+
+            if time.time() - self._last_command_time < 5.0:
+                if db_is_on == self._attr_is_on and db_brightness == self._attr_brightness:
+                    self._last_command_time = 0.0
+            else:
+                self._attr_is_on = db_is_on
+                self._attr_brightness = db_brightness
         self.async_write_ha_state()
 
     async def async_turn_on(self, **kwargs: Any) -> None:

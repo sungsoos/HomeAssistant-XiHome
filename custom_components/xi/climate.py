@@ -71,14 +71,29 @@ class XiHeatingThermostat(CoordinatorEntity[XiDataUpdateCoordinator], ClimateEnt
     @property
     def hvac_mode(self) -> HVACMode:
         """Return hvac operation ie. heat, cool mode."""
-        if time.time() - self._last_command_time < 1.0:
-            return self._attr_hvac_mode
         device = self.coordinator.data.get(self._device_id)
         if not device:
             return self._attr_hvac_mode
         status = device.get("status") or {}
         power_on = status.get("power") is True or status.get("power") == "on"
-        return HVACMode.HEAT if power_on else HVACMode.OFF
+        db_hvac_mode = HVACMode.HEAT if power_on else HVACMode.OFF
+
+        if time.time() - self._last_command_time < 5.0:
+            target_temp = (
+                status.get("temperature")
+                or status.get("target_temperature")
+                or status.get("target_temp")
+                or status.get("user_change")
+                or status.get("user_load")
+                or status.get("userChange")
+                or status.get("userLoad")
+            )
+            db_target_temp = float(target_temp) if target_temp is not None else self._attr_target_temperature
+
+            if db_hvac_mode == self._attr_hvac_mode and db_target_temp == self._attr_target_temperature:
+                self._last_command_time = 0.0
+            return self._attr_hvac_mode
+        return db_hvac_mode
 
     @property
     def current_temperature(self) -> float | None:
@@ -95,8 +110,6 @@ class XiHeatingThermostat(CoordinatorEntity[XiDataUpdateCoordinator], ClimateEnt
     @property
     def target_temperature(self) -> float | None:
         """Return the temperature we try to reach."""
-        if time.time() - self._last_command_time < 1.0:
-            return self._attr_target_temperature
         device = self.coordinator.data.get(self._device_id)
         if not device:
             return self._attr_target_temperature
@@ -110,35 +123,43 @@ class XiHeatingThermostat(CoordinatorEntity[XiDataUpdateCoordinator], ClimateEnt
             or status.get("userChange")
             or status.get("userLoad")
         )
-        if target_temp is not None:
-            return float(target_temp)
-        return self._attr_target_temperature
+        db_target_temp = float(target_temp) if target_temp is not None else self._attr_target_temperature
+
+        if time.time() - self._last_command_time < 5.0:
+            power_on = status.get("power") is True or status.get("power") == "on"
+            db_hvac_mode = HVACMode.HEAT if power_on else HVACMode.OFF
+            if db_hvac_mode == self._attr_hvac_mode and db_target_temp == self._attr_target_temperature:
+                self._last_command_time = 0.0
+            return self._attr_target_temperature
+        return db_target_temp
 
     def _handle_coordinator_update(self) -> None:
         """Handle updated data from the coordinator."""
-        if time.time() - self._last_command_time >= 1.0:
-            device = self.coordinator.data.get(self._device_id)
-            if device:
-                status = device.get("status") or {}
-                power_on = status.get("power") is True or status.get("power") == "on"
-                self._attr_hvac_mode = HVACMode.HEAT if power_on else HVACMode.OFF
-
-                target_temp = (
-                    status.get("temperature")
-                    or status.get("target_temperature")
-                    or status.get("target_temp")
-                    or status.get("user_change")
-                    or status.get("user_load")
-                    or status.get("userChange")
-                    or status.get("userLoad")
-                )
-                if target_temp is not None:
-                    self._attr_target_temperature = float(target_temp)
-
-        # Always update current temperature
         device = self.coordinator.data.get(self._device_id)
         if device:
             status = device.get("status") or {}
+            power_on = status.get("power") is True or status.get("power") == "on"
+            db_hvac_mode = HVACMode.HEAT if power_on else HVACMode.OFF
+
+            target_temp = (
+                status.get("temperature")
+                or status.get("target_temperature")
+                or status.get("target_temp")
+                or status.get("user_change")
+                or status.get("user_load")
+                or status.get("userChange")
+                or status.get("userLoad")
+            )
+            db_target_temp = float(target_temp) if target_temp is not None else self._attr_target_temperature
+
+            if time.time() - self._last_command_time < 5.0:
+                if db_hvac_mode == self._attr_hvac_mode and db_target_temp == self._attr_target_temperature:
+                    self._last_command_time = 0.0
+            else:
+                self._attr_hvac_mode = db_hvac_mode
+                self._attr_target_temperature = db_target_temp
+
+            # Always update current temperature
             current_temp = status.get("current_temperature") or status.get("current_temp")
             if current_temp is not None:
                 self._attr_current_temperature = float(current_temp)

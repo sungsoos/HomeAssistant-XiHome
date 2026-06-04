@@ -56,21 +56,30 @@ class XiStandbySwitch(CoordinatorEntity[XiDataUpdateCoordinator], SwitchEntity):
     @property
     def is_on(self) -> bool:
         """Return true if switch is on."""
-        if time.time() - self._last_command_time < 1.0:
-            return self._attr_is_on
         device = self.coordinator.data.get(self._device_id)
         if not device:
             return self._attr_is_on
         status = device.get("status") or {}
-        return status.get("power") is True or status.get("power") == "on"
+        db_is_on = status.get("power") is True or status.get("power") == "on"
+
+        if time.time() - self._last_command_time < 5.0:
+            if db_is_on == self._attr_is_on:
+                self._last_command_time = 0.0
+            return self._attr_is_on
+        return db_is_on
 
     def _handle_coordinator_update(self) -> None:
         """Handle updated data from the coordinator."""
-        if time.time() - self._last_command_time >= 1.0:
-            device = self.coordinator.data.get(self._device_id)
-            if device:
-                status = device.get("status") or {}
-                self._attr_is_on = status.get("power") is True or status.get("power") == "on"
+        device = self.coordinator.data.get(self._device_id)
+        if device:
+            status = device.get("status") or {}
+            db_is_on = status.get("power") is True or status.get("power") == "on"
+
+            if time.time() - self._last_command_time < 5.0:
+                if db_is_on == self._attr_is_on:
+                    self._last_command_time = 0.0
+            else:
+                self._attr_is_on = db_is_on
         self.async_write_ha_state()
 
     async def async_turn_on(self, **kwargs: Any) -> None:
