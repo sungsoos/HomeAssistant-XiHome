@@ -56,7 +56,7 @@ class XiStandbySwitch(CoordinatorEntity[XiDataUpdateCoordinator], SwitchEntity):
     @property
     def is_on(self) -> bool:
         """Return true if switch is on."""
-        if time.time() - self._last_command_time < 5.0:
+        if time.time() - self._last_command_time < 1.0:
             return self._attr_is_on
         device = self.coordinator.data.get(self._device_id)
         if not device:
@@ -66,7 +66,7 @@ class XiStandbySwitch(CoordinatorEntity[XiDataUpdateCoordinator], SwitchEntity):
 
     def _handle_coordinator_update(self) -> None:
         """Handle updated data from the coordinator."""
-        if time.time() - self._last_command_time >= 5.0:
+        if time.time() - self._last_command_time >= 1.0:
             device = self.coordinator.data.get(self._device_id)
             if device:
                 status = device.get("status") or {}

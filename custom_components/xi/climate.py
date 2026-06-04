@@ -71,7 +71,7 @@ class XiHeatingThermostat(CoordinatorEntity[XiDataUpdateCoordinator], ClimateEnt
     @property
     def hvac_mode(self) -> HVACMode:
         """Return hvac operation ie. heat, cool mode."""
-        if time.time() - self._last_command_time < 5.0:
+        if time.time() - self._last_command_time < 1.0:
             return self._attr_hvac_mode
         device = self.coordinator.data.get(self._device_id)
         if not device:
@@ -95,7 +95,7 @@ class XiHeatingThermostat(CoordinatorEntity[XiDataUpdateCoordinator], ClimateEnt
     @property
     def target_temperature(self) -> float | None:
         """Return the temperature we try to reach."""
-        if time.time() - self._last_command_time < 5.0:
+        if time.time() - self._last_command_time < 1.0:
             return self._attr_target_temperature
         device = self.coordinator.data.get(self._device_id)
         if not device:
@@ -116,7 +116,7 @@ class XiHeatingThermostat(CoordinatorEntity[XiDataUpdateCoordinator], ClimateEnt
 
     def _handle_coordinator_update(self) -> None:
         """Handle updated data from the coordinator."""
-        if time.time() - self._last_command_time >= 5.0:
+        if time.time() - self._last_command_time >= 1.0:
             device = self.coordinator.data.get(self._device_id)
             if device:
                 status = device.get("status") or {}
