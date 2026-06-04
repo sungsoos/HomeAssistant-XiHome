@@ -90,11 +90,6 @@ class XiStandbySwitch(CoordinatorEntity[XiDataUpdateCoordinator], SwitchEntity):
 
         success = await self._client.send_command("standby", self._device_id, {"power": True})
         if success:
-            if (device := self.coordinator.data.get(self._device_id)) is not None:
-                if "status" not in device:
-                    device["status"] = {}
-                device["status"]["power"] = True
-            self.coordinator.async_set_updated_data(self.coordinator.data)
             await self.coordinator.async_request_refresh()
         else:
             self._attr_is_on = False
@@ -108,11 +103,6 @@ class XiStandbySwitch(CoordinatorEntity[XiDataUpdateCoordinator], SwitchEntity):
 
         success = await self._client.send_command("standby", self._device_id, {"power": False})
         if success:
-            if (device := self.coordinator.data.get(self._device_id)) is not None:
-                if "status" not in device:
-                    device["status"] = {}
-                device["status"]["power"] = False
-            self.coordinator.async_set_updated_data(self.coordinator.data)
             await self.coordinator.async_request_refresh()
         else:
             self._attr_is_on = True

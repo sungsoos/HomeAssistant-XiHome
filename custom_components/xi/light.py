@@ -96,11 +96,6 @@ class XiLight(CoordinatorEntity[XiDataUpdateCoordinator], LightEntity):
         self.async_write_ha_state()
         success = await self._client.send_command("light", self._device_id, {"power": True})
         if success:
-            if (device := self.coordinator.data.get(self._device_id)) is not None:
-                if "status" not in device:
-                    device["status"] = {}
-                device["status"]["power"] = True
-            self.coordinator.async_set_updated_data(self.coordinator.data)
             await self.coordinator.async_request_refresh()
         else:
             self._attr_is_on = False
@@ -113,11 +108,6 @@ class XiLight(CoordinatorEntity[XiDataUpdateCoordinator], LightEntity):
         self.async_write_ha_state()
         success = await self._client.send_command("light", self._device_id, {"power": False})
         if success:
-            if (device := self.coordinator.data.get(self._device_id)) is not None:
-                if "status" not in device:
-                    device["status"] = {}
-                device["status"]["power"] = False
-            self.coordinator.async_set_updated_data(self.coordinator.data)
             await self.coordinator.async_request_refresh()
         else:
             self._attr_is_on = True
@@ -244,12 +234,6 @@ class XiDimmingLight(CoordinatorEntity[XiDataUpdateCoordinator], LightEntity):
 
         success = await self._client.send_command("dimming", self._device_id, status)
         if success:
-            if (device := self.coordinator.data.get(self._device_id)) is not None:
-                if "status" not in device:
-                    device["status"] = {}
-                device["status"]["power"] = True
-                device["status"]["dimming"] = dimming
-            self.coordinator.async_set_updated_data(self.coordinator.data)
             await self.coordinator.async_request_refresh()
         else:
             self._attr_is_on = old_is_on
@@ -265,12 +249,6 @@ class XiDimmingLight(CoordinatorEntity[XiDataUpdateCoordinator], LightEntity):
 
         success = await self._client.send_command("dimming", self._device_id, {"power": False, "dimming": 0})
         if success:
-            if (device := self.coordinator.data.get(self._device_id)) is not None:
-                if "status" not in device:
-                    device["status"] = {}
-                device["status"]["power"] = False
-                device["status"]["dimming"] = 0
-            self.coordinator.async_set_updated_data(self.coordinator.data)
             await self.coordinator.async_request_refresh()
         else:
             self._attr_is_on = old_is_on
