@@ -80,7 +80,14 @@ class XiStandbySwitch(CoordinatorEntity[XiDataUpdateCoordinator], SwitchEntity):
         self.async_write_ha_state()
 
         success = await self._client.send_command("standby", self._device_id, {"power": True})
-        if not success:
+        if success:
+            if (device := self.coordinator.data.get(self._device_id)) is not None:
+                if "status" not in device:
+                    device["status"] = {}
+                device["status"]["power"] = True
+            self.coordinator.async_set_updated_data(self.coordinator.data)
+            await self.coordinator.async_request_refresh()
+        else:
             self._attr_is_on = False
             self.async_write_ha_state()
 
@@ -91,6 +98,13 @@ class XiStandbySwitch(CoordinatorEntity[XiDataUpdateCoordinator], SwitchEntity):
         self.async_write_ha_state()
 
         success = await self._client.send_command("standby", self._device_id, {"power": False})
-        if not success:
+        if success:
+            if (device := self.coordinator.data.get(self._device_id)) is not None:
+                if "status" not in device:
+                    device["status"] = {}
+                device["status"]["power"] = False
+            self.coordinator.async_set_updated_data(self.coordinator.data)
+            await self.coordinator.async_request_refresh()
+        else:
             self._attr_is_on = True
             self.async_write_ha_state()

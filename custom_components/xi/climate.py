@@ -154,7 +154,14 @@ class XiHeatingThermostat(CoordinatorEntity[XiDataUpdateCoordinator], ClimateEnt
 
         power_on = hvac_mode == HVACMode.HEAT
         success = await self._client.send_command("heating", self._device_id, {"power": power_on})
-        if not success:
+        if success:
+            if (device := self.coordinator.data.get(self._device_id)) is not None:
+                if "status" not in device:
+                    device["status"] = {}
+                device["status"]["power"] = power_on
+            self.coordinator.async_set_updated_data(self.coordinator.data)
+            await self.coordinator.async_request_refresh()
+        else:
             self._attr_hvac_mode = old_hvac_mode
             self.async_write_ha_state()
 
@@ -174,7 +181,16 @@ class XiHeatingThermostat(CoordinatorEntity[XiDataUpdateCoordinator], ClimateEnt
             status["power"] = True
 
         success = await self._client.send_command("heating", self._device_id, status)
-        if not success:
+        if success:
+            if (device := self.coordinator.data.get(self._device_id)) is not None:
+                if "status" not in device:
+                    device["status"] = {}
+                device["status"]["temperature"] = int(target_temp)
+                if "power" in status:
+                    device["status"]["power"] = status["power"]
+            self.coordinator.async_set_updated_data(self.coordinator.data)
+            await self.coordinator.async_request_refresh()
+        else:
             self._attr_target_temperature = old_target_temperature
             self.async_write_ha_state()
 
