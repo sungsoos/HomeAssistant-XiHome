@@ -109,40 +109,50 @@ class XiHomeClient:
             "apt_code": self.apt_code or "",
         }
 
-    async def refresh_tokens(self) -> dict[str, Any]:
+    async def refresh_tokens(self, token_used: str | None = None) -> dict[str, Any]:
         """Refresh the access token using the refresh token."""
-        if not self.refresh_token:
-            raise Exception("No refresh token available")
+        if not hasattr(self, "_token_lock"):
+            import asyncio
+            self._token_lock = asyncio.Lock()
 
-        url = f"{self.AUTH_URL}/auth/token"
-        payload = {
-            "refresh_token": self.refresh_token,
-            "device_token": self.device_token,
-            "device_model_name": self.device_model,
-        }
+        async with self._token_lock:
+            if token_used and self.access_token != token_used:
+                # Token was already refreshed by another concurrent request
+                return {"access_token": self.access_token, "refresh_token": self.refresh_token}
 
-        session = self.session or aiohttp.ClientSession()
-        try:
-            async with session.post(url, json=payload, ssl=False) as response:
-                if response.status not in (200, 201):
-                    text = await response.text()
-                    raise Exception(f"Token refresh failed: {response.status} - {text}")
-                data = await response.json()
-                result = data.get("result") or data
-                self.access_token = result.get("access_token")
-                if result.get("refresh_token"):
-                    self.refresh_token = result.get("refresh_token")
-                self._notify_tokens_updated()
-                return result
-        finally:
-            if not self.session:
-                await session.close()
+            if not self.refresh_token:
+                raise Exception("No refresh token available")
+
+            url = f"{self.AUTH_URL}/auth/token"
+            payload = {
+                "refresh_token": self.refresh_token,
+                "device_token": self.device_token,
+                "device_model_name": self.device_model,
+            }
+
+            session = self.session or aiohttp.ClientSession()
+            try:
+                async with session.post(url, json=payload, ssl=False) as response:
+                    if response.status not in (200, 201):
+                        text = await response.text()
+                        raise Exception(f"Token refresh failed: {response.status} - {text}")
+                    data = await response.json()
+                    result = data.get("result") or data
+                    self.access_token = result.get("access_token")
+                    if result.get("refresh_token"):
+                        self.refresh_token = result.get("refresh_token")
+                    self._notify_tokens_updated()
+                    return result
+            finally:
+                if not self.session:
+                    await session.close()
 
     async def get_rooms(self) -> list[dict[str, Any]]:
         """Retrieve rooms."""
         url = f"{self.DEVICE_URL}/device/room"
         session = self.session or aiohttp.ClientSession()
         try:
+            token_used = self.access_token
             async with session.get(
                 url,
                 params=self._get_base_params(),
@@ -151,7 +161,7 @@ class XiHomeClient:
             ) as response:
                 if response.status == 401:
                     _LOGGER.info("Access token expired (401), attempting token refresh")
-                    await self.refresh_tokens()
+                    await self.refresh_tokens(token_used)
                     async with session.get(
                         url,
                         params=self._get_base_params(),
@@ -175,12 +185,13 @@ class XiHomeClient:
         params["room_id"] = room_id
         session = self.session or aiohttp.ClientSession()
         try:
+            token_used = self.access_token
             async with session.get(
                 url, params=params, headers=self._get_headers(), ssl=False
             ) as response:
                 if response.status == 401:
                     _LOGGER.info("Access token expired (401), attempting token refresh")
-                    await self.refresh_tokens()
+                    await self.refresh_tokens(token_used)
                     async with session.get(
                         url, params=params, headers=self._get_headers(), ssl=False
                     ) as retry_response:
@@ -206,13 +217,14 @@ class XiHomeClient:
         payload.update(self._get_base_params())
         session = self.session or aiohttp.ClientSession()
         try:
+            token_used = self.access_token
             async with session.post(
                 url, json=payload, headers=self._get_headers(), ssl=False
             ) as response:
                 if response.status == 401:
                     _LOGGER.info("Access token expired (401), attempting token refresh")
                     try:
-                        await self.refresh_tokens()
+                        await self.refresh_tokens(token_used)
                     except Exception as err:
                         _LOGGER.error(
                             "Failed to refresh tokens during command: %s", err
@@ -240,7 +252,7 @@ class XiHomeClient:
                         text,
                         payload,
                     )
-                return response.status in (200, 204)
+                    return response.status in (200, 204)
         finally:
             if not self.session:
                 await session.close()
@@ -259,7 +271,7 @@ class XiHomeClient:
             ) as response:
                 if response.status == 401:
                     _LOGGER.info("Access token expired (401), attempting token refresh")
-                    await self.async_refresh_tokens(token_used)
+                    await self.refresh_tokens(token_used)
                     async with session.get(
                         url, params=params, headers=self._get_headers(), ssl=False
                     ) as retry_response:
